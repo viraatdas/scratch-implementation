@@ -149,6 +149,46 @@ class DecoderBlock(nn.Module):
     x = self.residual_connections[1](x, lambda x: self.self_attention_block(x,encoder_output, encoder_output, src_mask))
     x = self.residual_connections[2](x, lambda x: self.feed_forward_block(x))
 
+class InputEmbeddings(nn.Module):
+  def __init__(self, d_model: int, vocab_size: int) -> None:
+     super().__init__()
+     self.d_model = d_model
+     self.vocab_size = vocab_size
+     self.embedding = nn.Embedding(vocab_size, d_model)
 
-         
+  def forward(self, x):
+    return self.embedding(x) * math.sqrt(self.d_model)
+  
+class PositionalEncoding(nn.Module):
+  def __init__(self, d_model: int, seq_length: int, dropout: float) -> None:
+    super().__init__()
+    self.d_model = d_model
+    self.seq_length = seq_length
+    self.dropout = nn.Dropout(dropout)
 
+    # (seq_len, d_model)
+    pe = torch.zeros(seq_length, d_model)
+
+    # seq_length
+    position = torch.arange(0, seq_length, dtype=torch.float).unsqueeze(1) # (seq_len, 1)
+
+    div_term = torch.exp(torch.arange(0, d_model, 2).float() * (-math.log(10000.0) / d_model)) # (d_model / 2)
+
+    # apply sine to even indices
+    pe[:, 0::2] = torch.sin(position * div_term)
+
+    # apply cos to odd indices
+    pe[:, 1::2] = torch.cos(position * div_term)
+
+    pe = pe.unsqueeze(0)
+
+    self.register_buffer("pe", pe)
+  
+  def forward(self, x):
+    x = x + (self.pe[:, : x.shape[1], :]).requires_grad_(False)
+    return self.dropout(x)
+
+
+
+
+  
